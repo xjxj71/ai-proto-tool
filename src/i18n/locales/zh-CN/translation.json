@@ -1,0 +1,53 @@
+{
+  "app": {
+    "name": "AI-Proto-Tool"
+  },
+  "welcome": {
+    "title": "欢迎使用 AI-Proto-Tool",
+    "subtitle": "AI驱动的原型设计工具",
+    "newProject": "新建项目",
+    "openProject": "打开项目",
+    "recentProjects": "最近项目",
+    "noProjects": "还没有项目，点击上方按钮创建第一个项目",
+    "createProject": "创建项目",
+    "projectName": "项目名称",
+    "projectDescription": "项目描述",
+    "canvasSize": "画布尺寸",
+    "cancel": "取消",
+    "delete": "删除",
+    "deleteConfirm": "确定要删除这个项目吗？此操作不可撤销。"
+  },
+  "editor": {
+    "menu": {
+      "file": "文件",
+      "edit": "编辑",
+      "view": "视图",
+      "export": "导出",
+      "settings": "设置"
+    },
+    "toolbar": {
+      "select": "选择",
+      "pen": "画笔",
+      "rectangle": "矩形",
+      "text": "文字",
+      "undo": "撤销",
+      "redo": "重做"
+    },
+    "status": {
+      "page": "页面",
+      "canvasSize": "画布尺寸",
+      "objects": "对象",
+      "saved": "已保存",
+      "saving": "保存中...",
+      "unsaved": "未保存"
+    }
+  },
+  "settings": {
+    "title": "设置",
+    "theme": "主题",
+    "dark": "暗色",
+    "light": "亮色",
+    "language": "语言",
+    "modelConfig": "模型配置"
+  }
+}
