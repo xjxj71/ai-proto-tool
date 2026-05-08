@@ -8,6 +8,9 @@ describe("uiStore", () => {
       rightPanelVisible: true,
       activeTool: "select",
       view: "welcome",
+      canvasMode: "design",
+      gridVisible: true,
+      currentPageId: "",
     });
   });
 
@@ -38,5 +41,27 @@ describe("uiStore", () => {
     expect(useUiStore.getState().view).toBe("editor");
     useUiStore.getState().setView("welcome");
     expect(useUiStore.getState().view).toBe("welcome");
+  });
+
+  it("should default to design canvas mode", () => {
+    expect(useUiStore.getState().canvasMode).toBe("design");
+  });
+
+  it("should set canvas mode", () => {
+    useUiStore.getState().setCanvasMode("sketch");
+    expect(useUiStore.getState().canvasMode).toBe("sketch");
+    useUiStore.getState().setCanvasMode("design");
+    expect(useUiStore.getState().canvasMode).toBe("design");
+  });
+
+  it("should toggle grid visibility", () => {
+    const initial = useUiStore.getState().gridVisible;
+    useUiStore.getState().toggleGrid();
+    expect(useUiStore.getState().gridVisible).toBe(!initial);
+  });
+
+  it("should store current page id", () => {
+    useUiStore.getState().setCurrentPageId("page-123");
+    expect(useUiStore.getState().currentPageId).toBe("page-123");
   });
 });

@@ -16,6 +16,6 @@ describe("App", () => {
   it("should show editor when view is set to editor", () => {
     useUiStore.getState().setView("editor");
     render(<App />);
-    expect(screen.getByText("画板工作区")).toBeInTheDocument();
+    expect(screen.getByText("请从左侧面板选择或创建页面")).toBeInTheDocument();
   });
 });

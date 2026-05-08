@@ -6,6 +6,7 @@ import { useProjectStore } from "@/stores/projectStore";
 import { useUiStore } from "@/stores/uiStore";
 import { ProjectList } from "./ProjectList";
 import { CreateProjectDialog } from "./CreateProjectDialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { Project } from "@/types";
 
 interface CreateProjectFormData {
@@ -17,6 +18,7 @@ interface CreateProjectFormData {
 export function WelcomeScreen() {
   const { t } = useTranslation();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const projects = useProjectStore((s) => s.projects);
   const setProjects = useProjectStore((s) => s.setProjects);
   const setCurrentProject = useProjectStore((s) => s.setCurrentProject);
@@ -28,7 +30,7 @@ export function WelcomeScreen() {
         input: {
           name: data.name,
           description: data.description,
-          canvas_preset: data.canvasPreset,
+          canvasPreset: data.canvasPreset,
         },
       }) as Project;
       const updated = await invoke("list_projects") as Project[];
@@ -46,13 +48,20 @@ export function WelcomeScreen() {
     setView("editor");
   };
 
-  const handleDeleteProject = async (id: string) => {
+  const handleDeleteProject = (id: string) => {
+    setDeleteTargetId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTargetId) return;
     try {
-      await invoke("delete_project", { id });
+      await invoke("delete_project", { id: deleteTargetId });
       const updated = await invoke("list_projects") as Project[];
       setProjects(updated);
     } catch (error) {
       console.error("Failed to delete project:", error);
+    } finally {
+      setDeleteTargetId(null);
     }
   };
 
@@ -87,6 +96,15 @@ export function WelcomeScreen() {
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
         onSubmit={handleCreateProject}
+      />
+      <ConfirmDialog
+        open={deleteTargetId !== null}
+        title={t("welcome.delete")}
+        message={t("welcome.deleteConfirm")}
+        confirmLabel={t("welcome.delete")}
+        variant="danger"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTargetId(null)}
       />
     </div>
   );

@@ -56,6 +56,86 @@ export type CanvasPreset = {
   category: "desktop" | "tablet" | "mobile";
 };
 
+export type CanvasMode = "sketch" | "design";
+
+// ---- AI Integration Types ----
+
+export type ProviderType =
+  | "openai"
+  | "anthropic"
+  | "gemini"
+  | "qwen"
+  | "deepseek"
+  | "moonshot"
+  | "doubao"
+  | "xiaomi"
+  | "zhipu"
+  | "custom";
+
+export interface ChatMessage {
+  id: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  images: string[];
+  timestamp: string;
+  canvasUpdated?: boolean;
+  skillUsed?: string;
+}
+
+export interface ChatHistory {
+  pageId: string;
+  projectId: string;
+  messages: ChatMessage[];
+  updatedAt: string;
+}
+
+export interface AIResponse {
+  type: "generate" | "modify";
+  html: string;
+  css: string;
+  interactions: Array<{
+    element: string;
+    action: string;
+    target: string;
+  }>;
+  memoryUpdates?: {
+    preferences?: Record<string, string>;
+    designSystem?: Record<string, string>;
+  };
+  skillUsed?: string;
+  message: string;
+}
+
+export interface ChatStreamEvent {
+  type: "delta" | "done" | "error";
+  content?: string;
+  error?: string;
+}
+
+export interface AIRequestConfig {
+  modelConfigId: string;
+  messages: Array<{
+    role: "user" | "assistant" | "system";
+    content: string | Array<ContentPart>;
+  }>;
+  stream: boolean;
+  temperature?: number;
+  maxTokens?: number;
+}
+
+export type ContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
+
+export interface ProviderPreset {
+  id: ProviderType;
+  name: string;
+  defaultBaseUrl: string;
+  authModes: AuthMode[];
+  supportedModelTypes: ModelType[];
+  modelSuggestions: string[];
+}
+
 export const CANVAS_PRESETS: CanvasPreset[] = [
   { name: "桌面 1440x900", width: 1440, height: 900, category: "desktop" },
   { name: "桌面 1280x800", width: 1280, height: 800, category: "desktop" },

@@ -1,3 +1,9 @@
+pub mod ai_commands;
+pub mod canvas_commands;
+pub mod chat_commands;
+pub mod export_commands;
+pub mod memory_commands;
 pub mod model_commands;
 pub mod page_commands;
 pub mod project_commands;
+pub mod snapshot_commands;

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import * as Dialog from "@radix-ui/react-dialog";
 import { CANVAS_PRESETS } from "@/types";
@@ -19,15 +19,20 @@ export function CreateProjectDialog({ open, onClose, onSubmit }: CreateProjectDi
   const { t } = useTranslation();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [canvasPreset, setCanvasPreset] = useState(CANVAS_PRESETS[0].name);
+  const [canvasPreset, setCanvasPreset] = useState(CANVAS_PRESETS[0]?.name ?? "");
+
+  useEffect(() => {
+    if (open) {
+      setName("");
+      setDescription("");
+      setCanvasPreset(CANVAS_PRESETS[0]?.name ?? "");
+    }
+  }, [open]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
     onSubmit({ name: name.trim(), description: description.trim(), canvasPreset });
-    setName("");
-    setDescription("");
-    setCanvasPreset(CANVAS_PRESETS[0].name);
   };
 
   return (
