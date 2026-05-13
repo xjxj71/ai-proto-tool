@@ -4,6 +4,7 @@ import { useChatStore } from "@/stores/chatStore";
 import { useModelStore } from "@/stores/modelStore";
 import { useCanvasStore } from "@/stores/canvasStore";
 import { useMemoryStore } from "@/stores/memoryStore";
+import { useUiStore } from "@/stores/uiStore";
 import { MemoryManager } from "@/memory/MemoryManager";
 import { ChatEngine } from "@/components/ai/ChatEngine";
 import { parseAIResponse } from "@/components/ai/ResponseParser";
@@ -25,6 +26,11 @@ export function useStreamingChat({ projectId, pageId }: UseStreamingChatOptions)
   const memoryManagerRef = useRef(new MemoryManager());
   const unlistenRef = useRef<UnlistenFn | null>(null);
   const requestIdRef = useRef<string>("");
+  const pageIdRef = useRef(pageId);
+  const projectIdRef = useRef(projectId);
+
+  pageIdRef.current = pageId;
+  projectIdRef.current = projectId;
 
   const isStreaming = useChatStore((s) => s.isStreaming);
   const startStreaming = useChatStore((s) => s.startStreaming);
@@ -71,14 +77,25 @@ export function useStreamingChat({ projectId, pageId }: UseStreamingChatOptions)
             const { messages } = useChatStore.getState();
             const lastMsg = messages[messages.length - 1];
             if (lastMsg && lastMsg.role === "assistant") {
+              const truncatedSuffix = parsed.truncated ? "\n\n[响应被截断，已尽可能恢复内容]" : "";
               const updatedMessages = messages.slice(0, -1);
               updatedMessages.push({
                 ...lastMsg,
-                content: parsed.replyText,
+                content: parsed.replyText + truncatedSuffix,
+                rawContent: currentContent,
                 canvasUpdated: !!(parsed.response.html),
                 skillUsed: parsed.response.skillUsed,
+                prototypeHtml: parsed.response.html || undefined,
+                prototypeCss: parsed.response.css || undefined,
               });
               useChatStore.getState().setMessages(updatedMessages);
+
+              if (parsed.response.html) {
+                useUiStore.getState().setPagePrototype(pageIdRef.current, {
+                  html: parsed.response.html,
+                  css: parsed.response.css ?? "",
+                });
+              }
 
               if (parsed.response.skillUsed) {
                 setActiveSkill(parsed.response.skillUsed);
@@ -112,6 +129,19 @@ export function useStreamingChat({ projectId, pageId }: UseStreamingChatOptions)
                 mm.saveProjectContext(projectId, updatedCtx);
               }
             }
+          } else {
+            // JSON parsing failed - use replyText (which may be a friendly fallback)
+            const { messages } = useChatStore.getState();
+            const lastMsg = messages[messages.length - 1];
+            if (lastMsg && lastMsg.role === "assistant") {
+              const updatedMessages = messages.slice(0, -1);
+              updatedMessages.push({
+                ...lastMsg,
+                content: parsed.replyText,
+                rawContent: currentContent !== parsed.replyText ? currentContent : undefined,
+              });
+              useChatStore.getState().setMessages(updatedMessages);
+            }
           }
 
           saveChatHistory();
@@ -139,29 +169,59 @@ export function useStreamingChat({ projectId, pageId }: UseStreamingChatOptions)
   }, [appendStreamContent, stopStreaming, addMessage, setActiveSkill]);
 
   const saveChatHistory = useCallback(async () => {
-    if (!projectId || !pageId) return;
+    const pid = projectIdRef.current;
+    const plid = pageIdRef.current;
+    if (!pid || !plid) return;
     try {
       const { invoke } = await import("@tauri-apps/api/core");
       const messages = useChatStore.getState().messages;
       const history = {
-        pageId,
-        projectId,
+        pageId: plid,
+        projectId: pid,
         messages,
         updatedAt: new Date().toISOString(),
       };
       await invoke("save_chat_history", {
-        projectId,
-        pageId,
+        projectId: pid,
+        pageId: plid,
         json: JSON.stringify(history),
       });
     } catch (error) {
       console.error("Failed to save chat history:", error);
     }
-  }, [projectId, pageId]);
+  }, []);
 
   const send = useCallback(async (text: string, images: string[]) => {
+    const canvasStore = useCanvasStore.getState();
+    const chatMessages = useChatStore.getState().messages;
+
+    const prototype = pageId
+      ? useUiStore.getState().getPagePrototype(pageId)
+      : undefined;
+
+    const lastSnapshot = (canvasStore.history.length > 0 && canvasStore.historyIndex >= 0)
+      ? canvasStore.history[canvasStore.historyIndex]
+      : null;
+    const canvasJSON = lastSnapshot
+      ? JSON.stringify(lastSnapshot)
+      : '{"version":"6","objects":[]}';
+
+    let screenshotDataUrl: string | undefined;
+    if (!prototype) {
+      const canvasElement = document.querySelector("canvas.lower-canvas") as HTMLCanvasElement | null
+        ?? document.querySelector("canvas") as HTMLCanvasElement | null;
+      if (canvasElement) {
+        try {
+          screenshotDataUrl = canvasElement.toDataURL("image/png");
+        } catch {
+          // Canvas might be tainted or unavailable
+        }
+      }
+    }
+
     const hasImages = images.length > 0;
-    const model = hasImages
+    const needsVision = hasImages || !!screenshotDataUrl;
+    const model = needsVision
       ? getDefaultVisionModel()
       : getDefaultTextModel();
 
@@ -187,16 +247,6 @@ export function useStreamingChat({ projectId, pageId }: UseStreamingChatOptions)
     const requestId = engineRef.current.generateRequestId();
     requestIdRef.current = requestId;
 
-    const canvasStore = useCanvasStore.getState();
-    const chatMessages = useChatStore.getState().messages;
-
-    const lastSnapshot = (canvasStore.history.length > 0 && canvasStore.historyIndex >= 0)
-      ? canvasStore.history[canvasStore.historyIndex]
-      : null;
-    const canvasJSON = lastSnapshot
-      ? JSON.stringify(lastSnapshot)
-      : '{"version":"6","objects":[]}';
-
     const config = engineRef.current.buildRequest({
       modelConfig: model,
       messages: chatMessages,
@@ -207,6 +257,9 @@ export function useStreamingChat({ projectId, pageId }: UseStreamingChatOptions)
         userPreferences: useMemoryStore.getState().userPreferences,
         projectContext: useMemoryStore.getState().projectContext,
       },
+      prototypeHtml: prototype?.html,
+      prototypeCss: prototype?.css,
+      screenshotDataUrl,
     });
 
     startStreaming(requestId);

@@ -4,7 +4,7 @@ import type {
   AIRequestConfig,
   ContentPart,
 } from "@/types";
-import { buildSystemPrompt, buildCanvasContext, buildConversationMessages, buildMemoryContext, type MemoryContextInput } from "./ContextBuilder";
+import { buildSystemPrompt, buildCanvasContext, buildPrototypeContext, buildConversationMessages, buildMemoryContext, type MemoryContextInput } from "./ContextBuilder";
 
 interface BuildRequestInput {
   modelConfig: ModelConfig;
@@ -15,6 +15,8 @@ interface BuildRequestInput {
   screenshotDataUrl?: string;
   skillName?: string;
   memoryContext?: MemoryContextInput;
+  prototypeHtml?: string;
+  prototypeCss?: string;
 }
 
 export class ChatEngine {
@@ -39,6 +41,8 @@ export class ChatEngine {
       screenshotDataUrl,
       skillName,
       memoryContext,
+      prototypeHtml,
+      prototypeCss,
     } = input;
 
     const systemPrompt = buildSystemPrompt({
@@ -46,12 +50,23 @@ export class ChatEngine {
       canvasHeight,
     });
 
-    const canvasContext = buildCanvasContext({
-      canvasJSON,
-      canvasWidth,
-      canvasHeight,
-      screenshotDataUrl,
-    });
+    const contextContent = prototypeHtml
+      ? buildPrototypeContext(prototypeHtml, prototypeCss ?? "")
+      : buildCanvasContext({
+          canvasJSON,
+          canvasWidth,
+          canvasHeight,
+        });
+
+    const canvasContextMessage = screenshotDataUrl && !prototypeHtml
+      ? {
+          role: "user" as const,
+          content: [
+            { type: "text" as const, text: contextContent },
+            { type: "image_url" as const, image_url: { url: screenshotDataUrl } },
+          ] as ContentPart[],
+        }
+      : { role: "user" as const, content: contextContent as string };
 
     const conversationMessages = buildConversationMessages(messages);
 
@@ -60,7 +75,7 @@ export class ChatEngine {
       content: string | ContentPart[];
     }> = [
       { role: "system", content: systemPrompt },
-      { role: "user", content: canvasContext },
+      canvasContextMessage,
     ];
 
     if (memoryContext) {
@@ -84,7 +99,7 @@ export class ChatEngine {
       messages: fullMessages,
       stream: true,
       temperature: 0.7,
-      maxTokens: 4096,
+      maxTokens: 16384,
     };
   }
 
